@@ -27,6 +27,11 @@ func init() {
 }
 
 func Rows(book io.Reader, sheet string, titles []string, dateFieldsList ...[]string) (<-chan []string, error) {
+	_, c, err := RowsWithTitles(book, sheet, titles, dateFieldsList...)
+	return c, err
+}
+
+func RowsWithTitles(book io.Reader, sheet string, titles []string, dateFieldsList ...[]string) ([]string, <-chan []string, error) {
 	dateFields := map[string]bool{}
 	if len(dateFieldsList) > 0 && len(dateFieldsList[0]) > 0 {
 		dateFields = parseDateFields(dateFieldsList[0])
@@ -34,44 +39,44 @@ func Rows(book io.Reader, sheet string, titles []string, dateFieldsList ...[]str
 
 	f, err := excelize.OpenReader(book)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	rows, err := f.Rows(sheet)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var dateCols map[int]bool
-	var headers []int
+	var outHeaders []string
+	var headerIdx []int
 	colCount := 0
 	if rows.Next() {
 		// 1st row is fields names
 		var err error
-		colCount, headers, dateCols, err = createHeaderTitle(rows.Columns(), titles, dateFields)
+		colCount, outHeaders, headerIdx, dateCols, err = createHeaderTitle(rows.Columns(), titles, dateFields)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	fmt.Printf("dateCols: %v\n", dateCols)
 
 	c := make(chan []string)
-	out := make([]string, len(headers))
+	row := make([]string, len(headerIdx))
 	go func() {
 		for rows.Next() {
 			if cols := adjustCol(rows.Columns(), colCount, dateCols); len(cols) == 0 {
 				continue
 			} else {
-				for i, idx := range headers {
-					out[i] = cols[idx]
+				for i, idx := range headerIdx {
+					row[i] = cols[idx]
 				}
-				c <- out
+				c <- row
 			}
 		}
 		close(c)
 	}()
 
-	return c, nil
+	return outHeaders, c, nil
 }
 
 func parseDateFields(dateFieldsList []string) map[string]bool {
@@ -85,8 +90,8 @@ func parseDateFields(dateFieldsList []string) map[string]bool {
 	return dateFields
 }
 
-func createHeaderTitle(headers []string, titles []string, dateFields map[string]bool) (colCount int, outHeaders []int, dateCols map[int]bool, err error) {
-	outHeaders, err = indexTitleHeaders(headers, titles)
+func createHeaderTitle(headers []string, titles []string, dateFields map[string]bool) (colCount int, outHeaders []string, headerIdx []int, dateCols map[int]bool, err error) {
+	outHeaders, headerIdx, err = indexTitleHeaders(headers, titles)
 	if err != nil {
 		return
 	}
@@ -96,7 +101,7 @@ func createHeaderTitle(headers []string, titles []string, dateFields map[string]
 	return
 }
 
-func indexTitleHeaders(headers, titles []string) ([]int, error) {
+func indexTitleHeaders(headers, titles []string) ([]string, []int, error) {
 	headerIndex := map[string]int{}
 	for i, header := range headers {
 		headerIndex[header] = i
@@ -107,7 +112,7 @@ func indexTitleHeaders(headers, titles []string) ([]int, error) {
 		for i, _ := range headers {
 			outHeaders[i] = i
 		}
-		return outHeaders, nil
+		return headers, outHeaders, nil
 	}
 
 	outHeaders := make([]int, len(titles))
@@ -117,9 +122,9 @@ func indexTitleHeaders(headers, titles []string) ([]int, error) {
 			outHeaders[i] = idx
 			continue
 		}
-		return nil, fmt.Errorf("title %s not found", title)
+		return nil, nil, fmt.Errorf("title %s not found", title)
 	}
-	return outHeaders, nil
+	return titles, outHeaders, nil
 }
 
 func indexDateHeaders(headers []string, dateFields map[string]bool) map[int]bool {
