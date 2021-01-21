@@ -61,12 +61,12 @@ func RowsWithTitles(book io.Reader, sheet string, titles []string, dateFieldsLis
 	}
 
 	c := make(chan []string)
-	row := make([]string, len(headerIdx))
 	go func() {
 		for rows.Next() {
 			if cols := adjustCol(rows.Columns(), colCount, dateCols); len(cols) == 0 {
 				continue
 			} else {
+				row := make([]string, len(headerIdx))
 				for i, idx := range headerIdx {
 					row[i] = cols[idx]
 				}
