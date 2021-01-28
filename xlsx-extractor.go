@@ -47,17 +47,25 @@ func RowsWithTitles(book io.Reader, sheet string, titles []string, dateFieldsLis
 		return nil, nil, err
 	}
 
+	var headers []string
+	for rows.Next() {
+		// 1st row is fields names
+		headers = rows.Columns()
+		if len(headers) > 0 {
+			break
+		}
+	}
+	if len(headers) == 0 {
+		return nil, nil, fmt.Errorf("no data")
+	}
+
 	var dateCols map[int]bool
 	var outHeaders []string
 	var headerIdx []int
 	colCount := 0
-	if rows.Next() {
-		// 1st row is fields names
-		var err error
-		colCount, outHeaders, headerIdx, dateCols, err = createHeaderTitle(rows.Columns(), titles, dateFields)
-		if err != nil {
-			return nil, nil, err
-		}
+	colCount, outHeaders, headerIdx, dateCols, err = createHeaderTitle(headers, titles, dateFields)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	c := make(chan []string)
