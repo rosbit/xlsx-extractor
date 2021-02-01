@@ -148,6 +148,11 @@ func indexDateHeaders(headers []string, dateFields map[string]bool) map[int]bool
 }
 
 func adjustCol(cols []string, colCount int, dateCols map[int]bool) []string {
+	aCols := adjustCols(cols, colCount)
+	return ajustDate(aCols, dateCols)
+}
+
+func adjustCols(cols []string, colCount int) []string {
 	var aCols []string
 	c := len(cols)
 	switch {
@@ -173,7 +178,7 @@ func adjustCol(cols []string, colCount int, dateCols map[int]bool) []string {
 		}
 	}
 
-	return ajustDate(aCols, dateCols)
+	return aCols
 }
 
 func isBlankRow(cols []string, colCount int) bool {
