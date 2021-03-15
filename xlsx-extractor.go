@@ -76,7 +76,9 @@ func RowsWithTitles(book io.Reader, sheet string, titles []string, dateFieldsLis
 			} else {
 				row := make([]string, len(headerIdx))
 				for i, idx := range headerIdx {
-					row[i] = cols[idx]
+					if idx >= 0 {
+						row[i] = cols[idx]
+					}
 				}
 				c <- row
 			}
@@ -98,6 +100,14 @@ func parseDateFields(dateFieldsList []string) map[string]bool {
 	return dateFields
 }
 
+// @param headers 导入文件中的标题列表
+// @param titles  欲导出的标题列表；如果是nil表示获取全部的列名
+// @param dateFields 标题 -> 日期属性
+//
+// @return colCount    列数
+// @return outHeaders  导出的标题
+// @return headerIdx   outHeaders对应的列序号 (-1表示该列不存在)
+// @return dateColss   列序号 -> 是否是日期属性
 func createHeaderTitle(headers []string, titles []string, dateFields map[string]bool) (colCount int, outHeaders []string, headerIdx []int, dateCols map[int]bool, err error) {
 	outHeaders, headerIdx, err = indexTitleHeaders(headers, titles)
 	if err != nil {
@@ -128,9 +138,11 @@ func indexTitleHeaders(headers, titles []string) ([]string, []int, error) {
 		idx, ok := headerIndex[title]
 		if ok {
 			outHeaders[i] = idx
-			continue
+			// continue
+		} else {
+			outHeaders[i] = -1
 		}
-		return nil, nil, fmt.Errorf("title %s not found", title)
+		// return nil, nil, fmt.Errorf("title %s not found", title)
 	}
 	return titles, outHeaders, nil
 }

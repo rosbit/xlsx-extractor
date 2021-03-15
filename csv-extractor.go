@@ -56,7 +56,9 @@ func CsvRowsWithTitles(book io.Reader, titles []string) ([]string, <-chan []stri
 			} else {
 				row := make([]string, len(headerIdx))
 				for i, idx := range headerIdx {
-					row[i] = cols[idx]
+					if idx >= 0 {
+						row[i] = cols[idx]
+					}
 				}
 				c <- row
 			}
