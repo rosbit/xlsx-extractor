@@ -26,15 +26,16 @@ func init() {
 	}
 }
 
-func Rows(book io.Reader, sheet string, titles []string, dateFieldsList ...[]string) (<-chan []string, error) {
-	_, c, err := RowsWithTitles(book, sheet, titles, dateFieldsList...)
+func Rows(book io.Reader, sheet string, titles []string, o ...Option) (<-chan []string, error) {
+	_, c, err := RowsWithTitles(book, sheet, titles, o...)
 	return c, err
 }
 
-func RowsWithTitles(book io.Reader, sheet string, titles []string, dateFieldsList ...[]string) ([]string, <-chan []string, error) {
+func RowsWithTitles(book io.Reader, sheet string, titles []string, o ...Option) ([]string, <-chan []string, error) {
+	options := getOptions(o...)
 	dateFields := map[string]bool{}
-	if len(dateFieldsList) > 0 && len(dateFieldsList[0]) > 0 {
-		dateFields = parseDateFields(dateFieldsList[0])
+	if len(options.dateFields) > 0 {
+		dateFields = parseDateFields(options.dateFields)
 	}
 
 	f, err := excelize.OpenReader(book)
@@ -47,16 +48,18 @@ func RowsWithTitles(book io.Reader, sheet string, titles []string, dateFieldsLis
 		return nil, nil, err
 	}
 
+	for i:=0; i<options.skipLinesBeforeTitles && rows.Next(); i++ {
+		_ = rows.Columns()
+	}
 	var headers []string
-	for rows.Next() {
-		// 1st row is fields names
+	if rows.Next() {
 		headers = rows.Columns()
-		if len(headers) > 0 {
-			break
-		}
 	}
 	if len(headers) == 0 {
 		return nil, nil, fmt.Errorf("no data")
+	}
+	for i:=0; i<options.skipLinesAfterTitles && rows.Next(); i++ {
+		_ = rows.Columns()
 	}
 
 	var dateCols map[int]bool
